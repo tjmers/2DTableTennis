@@ -1,6 +1,6 @@
-#include "Match.h"
+#include <chrono>
 
-constexpr int GAME_LOOP_TIMER = 1;
+#include "Match.h"
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -13,10 +13,15 @@ int CALLBACK WinMain(
 	_In_ LPSTR lpCmdLine,
 	_In_ int nCmdShow)
 {
+	constexpr LPCWSTR CLASS_NAME = L"mainwin";
 
-	WNDCLASSEX window{ 0 };
+	using namespace std::chrono_literals;
+	const int targetFPS = 60;
+	constexpr std::chrono::nanoseconds timestep(1000ms / targetFPS);
+
+	WNDCLASSEX window { 0 };
 	window.hInstance = hInstance;
-	window.lpszClassName = L"mainwin";
+	window.lpszClassName = CLASS_NAME;
 	window.lpfnWndProc = WndProc;
 	window.cbSize = sizeof(window);
 	window.style = CS_OWNDC;
@@ -33,7 +38,7 @@ int CALLBACK WinMain(
 
 	HWND hWnd = CreateWindowExW(
 		0,
-		L"mainwin",
+		CLASS_NAME,
 		L"2D Ping Pong",
 		WS_CAPTION | WS_SYSMENU | WS_BORDER,
 		75, 25, client_region.right - client_region.left, client_region.bottom - client_region.top,
@@ -44,36 +49,50 @@ int CALLBACK WinMain(
 	);
 
 	g = new Graphics();
-	if (!g->Init(hWnd))
+	if (FAILED(g->CreateGraphicsResources(hWnd)))
 	{
 		delete g;
 		return -1;
 	}
 
+	FastMath::Init();
 	match = new Match(g);
 
-	SetTimer(hWnd, GAME_LOOP_TIMER, 16, (TIMERPROC)NULL);
 	ShowWindow(hWnd, SW_SHOW);
-	UpdateWindow(hWnd);
+
+	using clock = std::chrono::high_resolution_clock;
+	std::chrono::nanoseconds lag(0ns);
+	auto timeStart = clock::now();
 
 	MSG msg;
-	BOOL gResult;
+	msg.message = WM_NULL;
+	while (msg.message != WM_QUIT) {
+		auto currentTime = clock::now();
+		auto deltaTime = currentTime - timeStart;
+		timeStart = currentTime;
+		lag += std::chrono::duration_cast<std::chrono::nanoseconds>(deltaTime);
 
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		} else {
+			while (lag >= timestep) {
+				lag -= timestep;
 
-	while (gResult = GetMessage(&msg, nullptr, 0, 0) > 0)
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+				match->Update();
+			}
+
+			g->BeginDraw();
+			g->ClearScreen(0.0f, 0.0f, 0.0f);
+			match->Draw();
+
+			g->EndDraw();
+		}
 	}
 
-	KillTimer(hWnd, GAME_LOOP_TIMER);
 	delete g;
 	delete match;
 
-
-	if (gResult == -1) {
-		return -1;
-	}
 	return (int)msg.wParam;
 }
 
@@ -81,37 +100,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
-	case WM_DESTROY:
 	case WM_CLOSE:
+		DestroyWindow(hWnd);
+		break;
+	case WM_DESTROY:
 		PostQuitMessage(0);
-		return 0;
-		
-	case WM_TIMER:
-		if (wParam == GAME_LOOP_TIMER)
-		{
-			match->Update();
+		break;
 
-			InvalidateRect(hWnd, NULL, TRUE);
-		}
-		return 0;
-
-	case WM_PAINT:
-		g->BeginDraw();
-		g->ClearScreen(0.0f, 0.0f, 0.0f);
-		match->Draw();
-
-		g->EndDraw();
-		return DefWindowProcW(hWnd, uMsg, wParam, lParam);
-
+	case WM_KILLFOCUS:
+		Input::Reset();
+		break;
+	case WM_SYSKEYDOWN:
+	case WM_SYSKEYUP:
 	case WM_KEYDOWN:
-		match->HandleKeyDown(wParam);
-		return 0;
-
 	case WM_KEYUP:
-		match->HandleKeyUp(wParam);
-		return 0;
+		Input::HandleKeyboardInput(wParam, (lParam & (1 << 31)) == 0);
+		break;
 
 	default:
 		return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 	}
+
+	return 0;
 }

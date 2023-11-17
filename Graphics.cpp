@@ -1,10 +1,7 @@
 #include "Graphics.h"
 
 Graphics::Graphics()
-	: factory(nullptr), render_target(nullptr), brush(nullptr)
-{
-
-}
+	: factory(nullptr), render_target(nullptr), brush(nullptr) { }
 
 Graphics::~Graphics()
 {
@@ -13,31 +10,27 @@ Graphics::~Graphics()
 	if (brush) brush->Release();
 }
 
-bool Graphics::Init(HWND hWnd)
+
+HRESULT Graphics::CreateGraphicsResources(HWND hWnd)
 {
-    HRESULT res = D2D1CreateFactory(D2D1_FACTORY_TYPE::D2D1_FACTORY_TYPE_SINGLE_THREADED, &factory);
-    if (res != S_OK) return false;
+    HRESULT hr;
 
-    RECT client_rect;
-    GetClientRect(hWnd, &client_rect);
+    hr = D2D1CreateFactory(D2D1_FACTORY_TYPE::D2D1_FACTORY_TYPE_SINGLE_THREADED, &factory);
+    
+    if (SUCCEEDED(hr))
+    {
+        RECT client_rect;
+        GetClientRect(hWnd, &client_rect);
 
-    res = factory->CreateHwndRenderTarget(
-        D2D1::RenderTargetProperties(),
-        D2D1::HwndRenderTargetProperties(
-            hWnd,
-            D2D1::SizeU(client_rect.right, client_rect.bottom)
-        ),
-        &render_target
-    );
+        D2D1_SIZE_U size = D2D1::SizeU(client_rect.right, client_rect.bottom);
 
-    if (res != S_OK) return false;
+        hr = factory->CreateHwndRenderTarget(D2D1::RenderTargetProperties(), D2D1::HwndRenderTargetProperties(hWnd, size), &render_target);
+    }
 
-    res = render_target->CreateSolidColorBrush(D2D1::ColorF(0, 0, 0, 0), &brush);
-    if (res != S_OK) return false;
+    if (SUCCEEDED(hr))
+        hr = render_target->CreateSolidColorBrush(D2D1::ColorF(0, 0, 0), &brush);
 
-
-    return true;
-
+    return hr;
 }
 
 
@@ -58,9 +51,9 @@ void Graphics::FillRect(const D2D1_RECT_F& rect) const
     render_target->FillRectangle(rect, brush);
 }
 
-void Graphics::DrawLine(const D2D1_POINT_2F& point1, const D2D1_POINT_2F& point2, const float width) const
+void Graphics::DrawLine(const D2D1_POINT_2F& point1, const D2D1_POINT_2F& point2, const float thickness) const
 {
-    render_target->DrawLine(point1, point2, brush, width);
+    render_target->DrawLine(point1, point2, brush, thickness);
 }
 
 

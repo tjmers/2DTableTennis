@@ -5,7 +5,7 @@ class Ball;
 class Table;
 
 #include "Player.h"
-
+#include "Input.h"
 
 class Match
 {
@@ -15,6 +15,7 @@ class Match
 	Table* table;
 	Graphics* g;
 
+	void update_inputs(); // TODO: just change inputs in all classes. ex: player, whatever else
 public:
 	Match(Graphics* g);
 	~Match();
