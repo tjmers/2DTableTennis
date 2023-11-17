@@ -1,5 +1,23 @@
 #include "Match.h"
 
+void Match::update_inputs() {
+	player_left->SetUp(Input::GetKeyDown(W));
+	player_left->SetLeft(Input::GetKeyDown(A));
+	player_left->SetDown(Input::GetKeyDown(S));
+	player_left->SetRight(Input::GetKeyDown(D));
+	player_left->SetShouldRotateLeft(Input::GetKeyDown(Q));
+	player_left->SetShouldRotateRight(Input::GetKeyDown(E));
+	player_left->SetFast(Input::GetKeyDown(LEFT_SHIFT));
+
+	player_right->SetUp(Input::GetKeyDown(UP));
+	player_right->SetLeft(Input::GetKeyDown(LEFT));
+	player_right->SetDown(Input::GetKeyDown(DOWN));
+	player_right->SetRight(Input::GetKeyDown(RIGHT));
+	player_right->SetShouldRotateLeft(Input::GetKeyDown(COMMA));
+	player_right->SetShouldRotateRight(Input::GetKeyDown(PERIOD));
+	player_right->SetFast(Input::GetKeyDown(SLASH));
+}
+
 Match::Match(Graphics* g)
 	: player_left(nullptr), player_right(nullptr),
 	  ball(new Ball(this, 128.0f, SCREEN_HEIGHT - 100.0f, 5.0f)),
@@ -20,6 +38,7 @@ Match::~Match()
 
 void Match::Update()
 {
+	update_inputs();
 	ball->Update();
 	player_left->Update(true);
 	player_right->Update(false);
